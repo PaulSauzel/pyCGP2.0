@@ -6,38 +6,36 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.model_selection import KFold
 
-class Evaluator(ABC):
+class Evaluator(ABC): #Abstract class for evaluator
     @abstractmethod
     def evaluate(self, genome):
         pass
-#put number of generations as parameter
-class EvaluatorSin(Evaluator): #Simple evaluator to test our model 
+
+
+
+
+
+class EvaluatorSin(Evaluator): #Evaluator for the sin function
     def __init__(self, input_range=(-1, 1), num_points=100):
-        self.inputs = np.linspace(input_range[0], input_range[1], num_points)
+        self.inputs = np.linspace(input_range[0], input_range[1], num_points) #Generate 100 points between -1 and 1
         self.targets = np.sin(self.inputs)
 
 
     def evaluate(self, genome,generation):
-        predictions = [genome.get_value([x])[0] for x in self.inputs]
-        unique_values = np.unique(np.round(predictions, decimals=5))
+        predictions = [genome.get_value([x])[0] for x in self.inputs] 
 
-        # Heuristic: if output is constant, assign very poor fitness
-        if len(unique_values) == 1:
-            return -1e6  # heavy penalty
+        from sklearn.metrics import r2_score
 
-        if np.var(predictions) < 0.01 * np.var(self.targets):
-            return -1e5
-        
-        if np.max(predictions) - np.min(predictions) < 1e-3:
-            return -1e5  # too flat
-        else:
-            from sklearn.metrics import r2_score
+        r2 = r2_score(self.targets, predictions)
+        return r2 
 
-            r2 = r2_score(self.targets, predictions)
-            return r2 
-
-    #try to print the f(x) to see if the model looks like sin function
     # try to add a graph to represent fitness over time (convergency grap)
+
+
+
+
+
+#IN DEVELOPMENT
 class Binary_Classifier(Evaluator):
 
     def __init__(self, X, y, test_size=0.2, random_state=42, threshold=0.5, cv = False):

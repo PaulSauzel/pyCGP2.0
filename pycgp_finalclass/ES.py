@@ -3,7 +3,7 @@ import numpy as np
 from pycgp_finalclass.Genome import Genome
 from pycgp_finalclass.Genome import CGPGenome
 
-class ES:
+class ES: #Evolution strategy
     def __init__(self, evaluator, mu, lam,genome_factory,mutation): 
         self.evaluator = evaluator
         self.mu = mu #parent population size
@@ -12,18 +12,14 @@ class ES:
         self.population = [self.genome_factory() for _ in range(mu)] 
         self.mutation = mutation
     
-    #evolving process evolving n time and stopping at a certain point without improvement
-    def evolve(self, n_generations, early_stopping, verbose=False): 
+    #evolving process: evolve n time and stopping at a certain point without improvement
+    def evolve(self, n_generations, early_stopping, verbose=False): #Put true in verbose to see prints
         parents = self.population
         best_genome = None
         best_fitness = -np.inf #start from the lowest value possible
         no_improvement = 0
-        #dominant_output_counter = {} #avoid to get stuck in a local optima
 
         for generation in range(n_generations):
-
-            
-            # Introduce some diversity in output mutation for each offspring
             offspring = []
             for i in range(self.lam):
                 parent = random.choice(parents)
@@ -55,8 +51,7 @@ class ES:
                 best_fitness = scored_population[0][1]
                 best_genome = scored_population[0][0].copy()
                 import copy
-                best_genome = copy.deepcopy(scored_population[0][0])
-
+                best_genome = copy.deepcopy(scored_population[0][0]) #deepcopy to avoid mutating best_genome
                 no_improvement = 0
             else:
                 no_improvement += 1

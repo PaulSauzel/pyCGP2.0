@@ -9,7 +9,7 @@ class CGPConfig(Config): #this is the class where we tune our main parameters
 
     def __init__(self,num_inputs, num_nodes, num_outputs, input_node_chance, 
                   const_min,const_max,function_set) :
-        self.num_inputs = num_inputs 
+        self.num_inputs = num_inputs # Number of inputs nodes
         self.num_nodes = num_nodes # size of our graph
         self.num_outputs = num_outputs #most of the time equal to 1
         self.const_min = const_min #The range of our constants

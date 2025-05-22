@@ -6,7 +6,7 @@ from pycgp_finalclass.Mutation import Mutation
 import networkx as nx
 import matplotlib.pyplot as plt
 
-class CGP:
+class CGP: #Class in development
     def __init__(self, genome):
         self.genome = genome
         self.active_nodes = genome._get_active_nodes()

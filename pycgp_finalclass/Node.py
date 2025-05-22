@@ -9,15 +9,14 @@ class Node:
         
     def execute(self, values_dict): 
         try:
-            input_values = [values_dict[i] for i in self.inputs]
+            input_values = [values_dict[i] for i in self.inputs] #Get the value that match the inputs indexes of the node
         except KeyError as e:
             print(f"Missing value for input index {e}")
             raise
 
-        result = self.Func.function(input_values, self.const_params)
+        result = self.Func.function(input_values, self.const_params) #Apply the function to get the result of the node
         return result
     
-
 
     def copy(self):
         return Node(

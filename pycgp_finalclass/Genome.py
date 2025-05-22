@@ -7,7 +7,7 @@ from pycgp_finalclass.Config import CGPConfig
 from pycgp_finalclass.Config import Config
 import numpy as np
 
-class Genome(ABC):
+class Genome(ABC): #Abstract class for our genome
     @abstractmethod
     def copy(self):
         pass
@@ -17,10 +17,11 @@ class Genome(ABC):
     def create_genome(cls, config):
         pass
 
-class CGPGenome:
+class CGPGenome: #This class contains every function that apply directly to the genome
     def __init__(self, config, nodes=None,):
         self.config = config
-        self.nodes = nodes if nodes is not None else self._init_nodes() #you can pass in the parameters a genome
+        self.nodes = nodes if nodes is not None else self._init_nodes() #you can pass in the parameters a specific genome
+        #Choose n random outputs from the list of internal nodes
         self.outputs = [
             random.choice(
                 range(config.num_inputs, config.num_inputs + config.num_nodes)
@@ -28,14 +29,23 @@ class CGPGenome:
             for _ in range(config.num_outputs)
         ]
 
+    def copy(self):
+        return CGPGenome(
+            config=self.config,  
+            nodes=self.nodes
+        )        
+
+    @classmethod
+    def create_genome(cls, config):
+        return cls(config)
 
     #Initialise a list of nodes of size num_nodes
     def _init_nodes(self): 
         nodes = []
         for i in range(self.config.num_nodes):
-            cgp_func = random.choice(self.config.function_set)
+            cgp_func = random.choice(self.config.function_set) #Assign a random function from the function set
 
-            const_params = [
+            const_params = [ #Random uniform values for the constants
                 random.uniform(self.config.const_min, self.config.const_max)
                 for _ in range(cgp_func.const_params)
             ]
@@ -53,43 +63,45 @@ class CGPGenome:
                     else:
                         inputs.append(random.randint(self.config.num_inputs, max_index-1))  # Previous node only
 
-            nodes.append(Node(cgp_func, inputs, const_params, max_index))
-           
+            nodes.append(Node(cgp_func, inputs, const_params, max_index)) #fill the list of nodes of the genome
         return nodes
 
 
     def get_value(self, input_values):
-        values = {i: val for i, val in enumerate(input_values)}  # Input indices: 0 to num_inputs-1
+        values = {i: val for i, val in enumerate(input_values)}  # dictionary of input values
 
-        active_nodes = self.get_active_nodes()
+        active_nodes = self.get_active_nodes() #Only compute the active nodes
 
         for node in active_nodes:
-            values[node.index] = node.execute(values)
+            values[node.index] = node.execute(values) # execute function for each active node to get the end values
 
-        return [values[i] for i in self.outputs]
+        return [values[i] for i in self.outputs] # get values for the outputs nodes
 
 
-    #used to display the genome in a understandable
+    #used to display the genome in an understandable way
     def to_function_string(self):
         func_str = ""
-        for i, node in enumerate(self.nodes):
+        for node in self.nodes:
             inputs = [f"x{idx}" if idx < self.config.num_inputs else f"n{idx}" for idx in node.inputs]
             func = node.Func.name
             func_str += f"n{node.index} = {func}({', '.join(inputs)})\n"
-        func_str += f"Output: n{self.outputs[0]} "
+        func_str += f"Output: n{self.outputs[0]}\n\n"
+
+        def unroll_node(idx):
+            if idx < self.config.num_inputs:
+                return f"x{idx}"
+            else:
+                node = self.nodes[idx - self.config.num_inputs]
+                func = node.Func.name
+                args = [unroll_node(i) for i in node.inputs]
+                return f"{func}({', '.join(args)})"
+
+        output_expr = unroll_node(self.outputs[0])
+        func_str += "Unrolled output expression:\n" + output_expr
         return func_str
-    
-    def copy(self):
-        return CGPGenome(
-            config=self.config,  
-            nodes=self.nodes
-        )        
 
 
-    @classmethod
-    def create_genome(cls, config):
-        return cls(config)
-    
+    #Renvoie une liste de noeufs actifs (noeuds connectés aux outputs)
     def get_active_nodes(self):
         # Créer un dictionnaire index -> Node pour accès rapide
         index_to_node = {node.index: node for node in self.nodes}
