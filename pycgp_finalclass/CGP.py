@@ -18,9 +18,6 @@ class CGP: #Class in development
     def visualize(self):
         pass
     #method to visualize the graph
-    #Puts more comments , say when some features are not implemented
-    # put on git
-    # method for seing active genome
     #fix const params function
 
         # Thursday 11:30 22 may

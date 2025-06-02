@@ -5,7 +5,7 @@ class Mutation(ABC): #Abstract class for mutation
     def mutate(self, genome):
         pass
 
-class Golden_mutation(Mutation):
+class Golden_mutation(Mutation): #Try to create a new convention function
 
     def __init__(self,config,input_node_mutation_rate, function_mutation_rate,input_mutation_rate,const_mutation_rate,output_node_mutation_rate):
         self.config = config

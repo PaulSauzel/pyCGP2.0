@@ -2,6 +2,7 @@ import random
 import numpy as np
 from pycgp_finalclass.Genome import Genome
 from pycgp_finalclass.Genome import CGPGenome
+import matplotlib.pyplot as plt
 
 class ES: #Evolution strategy
     def __init__(self, evaluator, mu, lam,genome_factory,mutation): 
@@ -18,6 +19,12 @@ class ES: #Evolution strategy
         best_genome = None
         best_fitness = -np.inf #start from the lowest value possible
         no_improvement = 0
+        
+        # List to track best fitness per generation
+        fitness_history = []
+        best_so_far = -np.inf  # best-so-far fitness
+        
+        evaluation_count = 0    
 
         for generation in range(n_generations):
             offspring = []
@@ -33,6 +40,10 @@ class ES: #Evolution strategy
             scored_population = []
             for genome in population:
                 fitness = self.evaluator.evaluate(genome,generation) # put the number of generations
+                evaluation_count += 1
+                if fitness > best_so_far:
+                    best_so_far = fitness
+                fitness_history.append((evaluation_count, best_so_far))  # ← append per evaluation
                 scored_population.append((genome, fitness))
 
             # Sort the population based on fitness
@@ -70,6 +81,17 @@ class ES: #Evolution strategy
 
         print(f"\nBest fitness achieved: {best_fitness:.4f}")
         print(best_genome.to_function_string())
+        self.plot_fitness_convergence(fitness_history)
         return best_genome
     
-    
+        
+    def plot_fitness_convergence(self, fitness_history):
+        evaluations, best_fitnesses = zip(*fitness_history)
+        plt.figure(figsize=(10, 6))
+        plt.plot(evaluations, best_fitnesses, marker='o', color='blue', linewidth=1)
+        plt.title('Fitness Convergence Over Evaluations')
+        plt.xlabel('Evaluation Count')
+        plt.ylabel('Best-so-Far Fitness')
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()

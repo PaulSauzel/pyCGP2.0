@@ -109,3 +109,70 @@ class Binary_Classifier(Evaluator):
         self.last_test_accuracy = self.last_train_accuracy  # Optional: could still keep a separate real test set
 
         return self.last_train_accuracy   
+    
+
+from sklearn.metrics import mean_squared_error
+
+from sklearn.model_selection import train_test_split, KFold
+from sklearn.metrics import mean_squared_error
+import numpy as np
+
+class Regressor(Evaluator): ##WORK IN PROGRESS
+
+    def __init__(self, X, y, test_size=0.2, random_state=42, cv=False):
+        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
+            X, y, test_size=test_size, random_state=random_state
+        )
+        self.last_train_log_mse = None
+        self.last_test_log_mse = None
+        self.cv = cv
+
+    def evaluate(self, genome, generation):
+        if self.cv:
+            return self.evaluate_cv(genome, k=5)
+        else:
+            return self.evaluate_no_cv(genome)
+
+    def evaluate_no_cv(self, genome):
+        epsilon = 1e-8
+
+        # Predict on training set
+        train_preds = [genome.get_value(x)[0] for x in self.X_train]
+        y_train_flat = np.array(self.y_train).flatten()
+        train_preds = np.array(train_preds).flatten()
+        train_mse = mean_squared_error(y_train_flat, train_preds)
+        self.last_train_log_mse = np.log(train_mse + epsilon)
+
+        # Predict on test set
+        test_preds = [genome.get_value(x)[0] for x in self.X_test]
+        y_test_flat = np.array(self.y_test).flatten()
+        test_preds = np.array(test_preds).flatten()
+        test_mse = mean_squared_error(y_test_flat, test_preds)
+        self.last_test_log_mse = np.log(test_mse + epsilon)
+
+        return -self.last_test_log_mse  # Minimize log-MSE
+
+    def evaluate_cv(self, genome, k):
+        epsilon = 1e-8
+        kf = KFold(n_splits=k, shuffle=True, random_state=42)
+        log_mses = []
+
+        X = np.array(self.X_train)
+        y = np.array(self.y_train)
+
+        for train_index, test_index in kf.split(X):
+            X_fold_train, X_fold_test = X[train_index], X[test_index]
+            y_fold_train, y_fold_test = y[train_index], y[test_index]
+
+            fold_preds = [genome.get_value(x)[0] for x in X_fold_test]
+            fold_preds = np.array(fold_preds).flatten()
+            y_fold_test = np.array(y_fold_test).flatten()
+
+            mse = mean_squared_error(y_fold_test, fold_preds)
+            log_mses.append(np.log(mse + epsilon))
+
+        mean_log_mse = np.mean(log_mses)
+        self.last_train_log_mse = mean_log_mse
+        self.last_test_log_mse = mean_log_mse
+
+        return -mean_log_mse  # Fitness = negative log-MSE
