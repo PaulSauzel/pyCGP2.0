@@ -21,7 +21,7 @@ class EvaluatorSin(Evaluator): #Evaluator for the sin function
         self.targets = np.sin(self.inputs)
 
 
-    def evaluate(self, genome,generation):
+    def evaluate(self, genome):
         predictions = [genome.get_value([x])[0] for x in self.inputs] 
 
         from sklearn.metrics import r2_score
@@ -48,7 +48,7 @@ class Binary_Classifier(Evaluator):
         self.last_test_accuracy = 0.0
         self.cv = cv  # Flag to indicate if cross-validation is used
  
-    def evaluate(self, genome,generation):
+    def evaluate(self, genome):
         if self.cv:
             return self.evaluate_cv(genome, k=5)
         else:
@@ -127,7 +127,7 @@ class Regressor(Evaluator): ##WORK IN PROGRESS
         self.last_test_log_mse = None
         self.cv = cv
 
-    def evaluate(self, genome, generation):
+    def evaluate(self, genome):
         if self.cv:
             return self.evaluate_cv(genome, k=5)
         else:
