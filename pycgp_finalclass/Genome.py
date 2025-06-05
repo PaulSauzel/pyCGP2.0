@@ -131,77 +131,78 @@ class CGPGenome: #This class contains every function that apply directly to the 
         return active_nodes
 
 
-
-
-
-
-
-
-
     def visualize_active_graph(self):
         import networkx as nx
         import matplotlib.pyplot as plt
-        active_nodes = self.get_active_nodes()
-        G = nx.DiGraph()
 
+        active_nodes = self.get_active_nodes()
+        active_node_indices = {node.index for node in active_nodes}
+        active_output_indices = [idx for idx in self.outputs if idx in active_node_indices]
+
+        G = nx.DiGraph()
         pos = {}
         labels = {}
 
-        # Estimate how many rows we'll need to display
-        total_nodes = max(len(active_nodes), self.config.num_inputs, len(self.outputs))
-        max_nodes_per_column = total_nodes
+        layer_spacing = 3.0
+        vertical_spacing = 1.5
 
-        # Dynamic vertical spacing: more nodes → tighter spacing
-        node_spacing = max(1.0, 15.0 / max_nodes_per_column)
-        layer_spacing = 2.0
+        # STEP 1 — Get active input node indices
+        active_input_indices = set()
+        for node in active_nodes:
+            for input_idx in node.inputs:
+                if input_idx < self.config.num_inputs:
+                    active_input_indices.add(input_idx)
 
-        # Dynamic node size and font size based on node count
-        base_node_size = 1800
-        base_font_size = 10
-        scale = min(1.0, 30 / max_nodes_per_column)
-        node_size = base_node_size * scale
-        font_size = max(6, int(base_font_size * scale))
+        # STEP 2 — Add only active input nodes
+        active_input_indices = sorted(active_input_indices)
+        for i, idx in enumerate(active_input_indices):
+            label = f"x{idx}"
+            x = 0
+            y = -i * vertical_spacing + (len(active_input_indices) - 1) * vertical_spacing / 2
+            pos[label] = (x, y)
+            labels[label] = label
+            G.add_node(label, color='lightblue')
 
-        # Input nodes (left)
-        for i in range(self.config.num_inputs):
-            name = f"x{i}"
-            G.add_node(name, color='lightblue')
-            pos[name] = (0, -i * node_spacing)
-            labels[name] = name
+        # STEP 3 — Add internal nodes
+        internal_nodes = [node for node in active_nodes if node.index not in self.outputs]
+        for i, node in enumerate(internal_nodes):
+            label = f"n{node.index}\n{node.Func.name}"
+            x = layer_spacing
+            y = -i * vertical_spacing + (len(internal_nodes) - 1) * vertical_spacing / 2
+            pos[label] = (x, y)
+            labels[label] = label
+            G.add_node(label, color='lightgreen')
 
-        # Active internal nodes (middle)
-        for j, node in enumerate(active_nodes):
-            node_label = f"n{node.index}\n{node.Func.name}"
-            G.add_node(node_label, color='lightgreen')
-            pos[node_label] = (layer_spacing, -j * node_spacing)
-            labels[node_label] = node_label
+        # STEP 4 — Add output nodes (only if active)
+        for i, idx in enumerate(active_output_indices):
+            node = self.nodes[idx - self.config.num_inputs]
+            label = f"n{idx}\n{node.Func.name}"
+            x = 2 * layer_spacing
+            y = -i * vertical_spacing + (len(active_output_indices) - 1) * vertical_spacing / 2
+            pos[label] = (x, y)
+            labels[label] = label
+            G.add_node(label, color='orange')
 
+        # STEP 5 — Add edges
+        for node in active_nodes:
+            target_label = f"n{node.index}\n{node.Func.name}"
             for input_idx in node.inputs:
                 if input_idx < self.config.num_inputs:
                     input_label = f"x{input_idx}"
                 else:
-                    input_label = f"n{input_idx}\n{self.nodes[input_idx - self.config.num_inputs].Func.name}"
-                G.add_edge(input_label, node_label)
+                    if input_idx not in active_node_indices:
+                        continue  # skip inactive internal nodes
+                    src_node = self.nodes[input_idx - self.config.num_inputs]
+                    input_label = f"n{input_idx}\n{src_node.Func.name}"
+                G.add_edge(input_label, target_label)
 
-        # Output nodes (right)
-        for k, output_idx in enumerate(self.outputs):
-            output_node = self.nodes[output_idx - self.config.num_inputs]
-            output_label = f"n{output_idx}\n{output_node.Func.name}"
-            if output_label not in G.nodes:
-                G.add_node(output_label, color='orange')
-                pos[output_label] = (layer_spacing * 2, -k * node_spacing)
-                labels[output_label] = output_label
-            else:
-                G.nodes[output_label]['color'] = 'orange'
-                pos[output_label] = (layer_spacing * 2, -k * node_spacing)
-
-        # Draw the graph
+        # STEP 6 — Draw the graph
         node_colors = [G.nodes[n].get('color', 'gray') for n in G.nodes]
         nx.draw(G, pos, with_labels=True, labels=labels,
-                node_color=node_colors, node_size=node_size,
-                font_size=font_size, arrows=True, edge_color='gray')
+                node_color=node_colors, node_size=1500,
+                font_size=8, arrows=True, edge_color='gray')
 
-        plt.title("Active Genome Graph (Inputs → Internal → Outputs)")
+        plt.title("Active Genome Graph (Inputs → Internals → Outputs)")
         plt.axis('off')
         plt.tight_layout()
         plt.show()

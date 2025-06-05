@@ -58,17 +58,6 @@ class ES: #Evolution strategy
                 print(f"Early stopping at generation {generation} (no improvement for {early_stopping} generations).")
                 break
 
-
-            
-            # Show outputs of the top individuals
-            '''if verbose:
-                print(f"Best fitness this generation: {scored_population[0][1]:.4f}")
-                print("Top outputs this generation:")
-                for i in range(min(5, len(scored_population))):
-                    genome, fitness = scored_population[i]
-                    print(f"  {i+1}: Output = {genome.outputs} fitness = {fitness:.4f}")'''
-
-
             if verbose:
             # Print the top individual function string
                 print(f"\nBest fitness this generation: {best_fitness:.4f}")
