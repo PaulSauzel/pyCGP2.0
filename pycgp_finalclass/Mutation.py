@@ -43,11 +43,15 @@ class Golden_mutation(Mutation):
 
     #Mutate the outputs of the genome(used in mutate)
     def mutate_outputs(self, genome):
-        current_output = genome.outputs[0]
+        # Pick a random output index to mutate
+        output_index = random.randint(0, len(genome.outputs) - 1)
+        current_output = genome.outputs[output_index]
+        
         possible_outputs = list(set(range(self.config.num_inputs, self.config.num_inputs + self.config.num_nodes)) - {current_output})
         if possible_outputs:
             new_output = random.choice(possible_outputs)
-            genome.outputs = [new_output]
+            genome.outputs[output_index] = new_output
+
 
 
 

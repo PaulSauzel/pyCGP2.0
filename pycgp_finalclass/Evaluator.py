@@ -5,7 +5,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.model_selection import KFold
-
+from sklearn.metrics import r2_score
 class Evaluator(ABC): #Abstract class for evaluator
     @abstractmethod
     def evaluate(self, genome):
@@ -111,21 +111,18 @@ class Binary_Classifier(Evaluator):
         return self.last_train_accuracy   
     
 
-from sklearn.metrics import mean_squared_error
 
-from sklearn.model_selection import train_test_split, KFold
-from sklearn.metrics import mean_squared_error
-import numpy as np
 
-class Regressor(Evaluator): ##WORK IN PROGRESS
+class Regressor(Evaluator):
 
     def __init__(self, X, y, test_size=0.2, random_state=42, cv=False):
+        # y expected shape: (n_samples, n_outputs)
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
             X, y, test_size=test_size, random_state=random_state
         )
-        self.last_train_log_mse = None
-        self.last_test_log_mse = None
         self.cv = cv
+        self.last_train_r2 = 0.0
+        self.last_test_r2 = 0.0
 
     def evaluate(self, genome):
         if self.cv:
@@ -134,45 +131,123 @@ class Regressor(Evaluator): ##WORK IN PROGRESS
             return self.evaluate_no_cv(genome)
 
     def evaluate_no_cv(self, genome):
-        epsilon = 1e-8
-
         # Predict on training set
-        train_preds = [genome.get_value(x)[0] for x in self.X_train]
-        y_train_flat = np.array(self.y_train).flatten()
+        train_preds = []
+        for x in self.X_train:
+            output_values = genome.get_value(x)  # Expect vector output
+            predicted = np.argmax(output_values)
+            train_preds.append(predicted)
         train_preds = np.array(train_preds).flatten()
-        train_mse = mean_squared_error(y_train_flat, train_preds)
-        self.last_train_log_mse = np.log(train_mse + epsilon)
+        y_train_flat = np.array(self.y_train).flatten()
+        
+        self.last_train_r2 = r2_score(y_train_flat, train_preds, multioutput='uniform_average')
 
         # Predict on test set
-        test_preds = [genome.get_value(x)[0] for x in self.X_test]
-        y_test_flat = np.array(self.y_test).flatten()
+        test_preds = []
+        for x in self.X_test:
+            output_values = genome.get_value(x)
+            predicted = np.argmax(output_values)
+            test_preds.append(predicted)
         test_preds = np.array(test_preds).flatten()
-        test_mse = mean_squared_error(y_test_flat, test_preds)
-        self.last_test_log_mse = np.log(test_mse + epsilon)
+        y_test_flat = np.array(self.y_test).flatten()
+        
+        self.last_test_r2 = r2_score(y_test_flat, test_preds, multioutput='uniform_average')
 
-        return -self.last_test_log_mse  # Minimize log-MSE
+        return self.last_test_r2
+
 
     def evaluate_cv(self, genome, k):
-        epsilon = 1e-8
         kf = KFold(n_splits=k, shuffle=True, random_state=42)
-        log_mses = []
+        r2_scores = []
 
         X = np.array(self.X_train)
         y = np.array(self.y_train)
 
-        for train_index, test_index in kf.split(X):
-            X_fold_train, X_fold_test = X[train_index], X[test_index]
-            y_fold_train, y_fold_test = y[train_index], y[test_index]
+        for train_idx, test_idx in kf.split(X):
+            X_fold_train, y_fold_train = X[train_idx], y[train_idx]
+            X_fold_test, y_fold_test = X[test_idx], y[test_idx]
 
-            fold_preds = [genome.get_value(x)[0] for x in X_fold_test]
+            fold_preds = [genome.get_value(x) for x in X_fold_test]
+            fold_preds = np.array(fold_preds)
+            
+            # Make sure fold_preds and y_fold_test shapes match
+            r2 = r2_score(y_fold_test, fold_preds, multioutput='uniform_average')
+            r2_scores.append(r2)
+
+        self.last_train_r2 = np.mean(r2_scores)
+        self.last_test_r2 = self.last_train_r2  # Optional
+
+        return self.last_train_r2
+
+
+
+
+
+
+
+
+class MultiClassClassifier(Evaluator):
+
+    def __init__(self, X, y, test_size=0.2, random_state=42, cv=False):
+        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
+            X, y, test_size=test_size, random_state=random_state
+        )
+        self.last_train_accuracy = 0.0
+        self.last_test_accuracy = 0.0
+        self.cv = cv
+
+    def evaluate(self, genome):
+        if self.cv:
+            return self.evaluate_cv(genome, k=5)
+        else:
+            return self.evaluate_no_cv(genome)
+        
+    def evaluate_no_cv(self, genome):
+        # Training predictions
+        train_preds = []
+        for x in self.X_train:
+            output_values = genome.get_value(x)  # Expect vector output
+            predicted = np.argmax(output_values)
+            train_preds.append(predicted)
+        train_preds = np.array(train_preds).flatten()
+        y_train_flat = np.array(self.y_train).flatten()
+        self.last_train_accuracy = accuracy_score(y_train_flat, train_preds)
+
+        # Test predictions
+        test_preds = []
+        for x in self.X_test:
+            output_values = genome.get_value(x)
+            predicted = np.argmax(output_values)
+            test_preds.append(predicted)
+        test_preds = np.array(test_preds).flatten()
+        y_test_flat = np.array(self.y_test).flatten()
+        self.last_test_accuracy = accuracy_score(y_test_flat, test_preds)
+
+        return self.last_test_accuracy
+
+    def evaluate_cv(self, genome, k):
+        kf = KFold(n_splits=k, shuffle=True, random_state=42)
+        accuracies = []
+        X = np.array(self.X_train)
+        y = np.array(self.y_train)
+        
+        for train_idx, test_idx in kf.split(X):
+            X_fold_train, y_fold_train = X[train_idx], y[train_idx]
+            X_fold_test, y_fold_test = X[test_idx], y[test_idx]
+
+            fold_preds = []
+            for x in X_fold_test:
+                output_values = genome.get_value(x)
+                predicted = np.argmax(output_values)
+                fold_preds.append(predicted)
+
             fold_preds = np.array(fold_preds).flatten()
             y_fold_test = np.array(y_fold_test).flatten()
+            acc = accuracy_score(y_fold_test, fold_preds)
+            accuracies.append(acc)
 
-            mse = mean_squared_error(y_fold_test, fold_preds)
-            log_mses.append(np.log(mse + epsilon))
+        mean_acc = np.mean(accuracies)
+        self.last_train_accuracy = mean_acc
+        self.last_test_accuracy = mean_acc  # Optional
 
-        mean_log_mse = np.mean(log_mses)
-        self.last_train_log_mse = mean_log_mse
-        self.last_test_log_mse = mean_log_mse
-
-        return -mean_log_mse  # Fitness = negative log-MSE
+        return mean_acc
